@@ -379,14 +379,12 @@ if __name__ == "__main__":
     gen_smi_file = sys.argv[1]
     df = pd.read_csv(gen_smi_file)
     df['true_molecules'] = df['true_molecules'].fillna('').astype(str).apply(lambda x: [item.strip() for item in x.split(',') if item.strip()])
-    # group_id_list = df['group_id'].unique().tolist()
     data = df.to_dict(orient='records')
 
-    with open('/home/zhangxiaohong/chengcheng/ADOptDiff/ADOptDiff/BioDRG/data/dataset_split.json', 'r', encoding='utf-8') as f:
+    with open('../SAR-DRG/dataset_split.json', 'r', encoding='utf-8') as f:
             data_split = json.load(f)
     group_id_list = data_split.get('test_group', [])
-    group_id_list = [int(i) for i in group_id_list] #modify for case study, we directly set group_id_list in reformat.py
-    # group_id_list = [30000, 30001] # Case study only, group_id 0 for full, group_id 1 for remove
+    group_id_list = [int(i) for i in group_id_list]
 
     # Calculate Metrics for all generated molecules
     valid_score = get_valid_score(data, group_id_list)

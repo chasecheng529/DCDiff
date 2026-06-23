@@ -3,7 +3,7 @@
 set -eo pipefail
 
 # --- Can be edited ---
-CHECKPOINT_PATH="/home/zhangxiaohong/chengcheng/ADOptDiff/ADOptDiff/models/Case_study/DCDiff_NewTrain_E73.ckpt"
+CHECKPOINT_PATH="checkpoint.ckpt"
 GPU_ID="2" 
 N_SAMPLES=100
 AFFINITY=1.0

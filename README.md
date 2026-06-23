@@ -70,13 +70,15 @@ For example, increase `ddp_devices` when using more GPUs with DDP.
 
 ## Sampling
 
+The root directory provides a trained checkpoint, `checkpoint.ckpt`, which can be used directly for sampling.
+
 Run:
 
 ```bash
 bash sample.sh
 ```
 
-Before sampling, check the editable variables at the top of `sample.sh`, especially `CHECKPOINT_PATH`, `GPU_ID`, `N_SAMPLES`, `AFFINITY`, and `GUIDENCE`.
+Before sampling, check the editable variables at the top of `sample.sh`, especially `CHECKPOINT_PATH`, `GPU_ID`, `N_SAMPLES`, `AFFINITY`, and `GUIDENCE`. To use the provided trained model, set `CHECKPOINT_PATH` to `./checkpoint.ckpt`.
 
 ## Evaluation
 

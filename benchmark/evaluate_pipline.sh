@@ -5,7 +5,7 @@ set -eo pipefail
 # --- Path to saved samples, formatted as 0/ 1/ 2/ ... ---
 # --- For each sample folder, there are {index}_.sdf, {index}_.xyz files for generated molecules ---
 # --- For each sample folder, there are core_.sdf, core_.xyz, gt_{index}.sdf, gt_{index}.xyz, pocket_.xyz and pocket_.pdb files as ground truth---
-SAMPLES_PATH="/home/zhangxiaohong/chengcheng/Code/DCDiff/sample_results"
+SAMPLES_PATH="../sample_results"
 EXPERIMENT_NAME="TEST"
 
 

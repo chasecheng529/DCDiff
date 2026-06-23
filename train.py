@@ -189,7 +189,7 @@ def main(args):
 if __name__ == '__main__':
     p = argparse.ArgumentParser(description='E3Diffusion')
     p.add_argument('--seed', type=int, default=42, help='Random seed')
-    p.add_argument('--config', type=argparse.FileType(mode='r'), default='configs/ADOptDiff.yml')
+    p.add_argument('--config', type=argparse.FileType(mode='r'), default='configs/DCDiff.yml')
     p.add_argument('--data', action='store', type=str,  default="datasets")
     p.add_argument('--train_data_prefix', action='store', type=str, default='train')
     p.add_argument('--val_data_prefix', action='store', type=str,  default='val')
