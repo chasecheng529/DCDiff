@@ -30,7 +30,7 @@ from tqdm import tqdm
 import pandas as pd
 
 from rdkit import RDLogger
-RDLogger.DisableLog('rdApp.*')  # 禁用所有 RDKit 日志
+RDLogger.DisableLog('rdApp.*')  # Disable all RDKit logs.
 
 _fscores = None
 
@@ -202,9 +202,9 @@ class QVinaDockingTask(BaseDockingTask):
         atom_coords = np.array(atom_coords)
         center_pro = (atom_coords.max(0) + atom_coords.min(0)) / 2
 
-        #给输入的分子加H原子并计算坐标
+        # Add hydrogens to the input molecule and compute coordinates.
         params = AllChem.ETKDGv3()
-        params.randomSeed = 1  # 固定随机种子
+        params.randomSeed = 1  # Fix the random seed.
         ligand_rdmol = Chem.AddHs(ligand_rdmol, addCoords=True)
         AllChem.EmbedMolecule(ligand_rdmol, params)
 
@@ -222,7 +222,7 @@ class QVinaDockingTask(BaseDockingTask):
         with open(self.receptor_path, 'w') as f:
             f.write(pdb_block)
 
-        #UFF立场优化
+        # Optimize with the UFF force field.
         if use_uff:
             try:
                 not_converge = 10
@@ -282,9 +282,9 @@ obabel {ligand_id}_out.pdbqt -O{ligand_id}_out.sdf -h
             shell=True,
             executable='/bin/bash', # Explicitly use bash
             stdout=subprocess.PIPE, 
-            stderr=subprocess.PIPE,  # 捕获错误输出 (关键!)
-            encoding='utf-8',        # 自动解码为字符串
-            errors='ignore'          # 防止编码报错
+            stderr=subprocess.PIPE,  # Capture stderr.
+            encoding='utf-8',        # Decode output as text.
+            errors='ignore'          # Avoid encoding errors.
         )
     
     def wait(self):
@@ -306,33 +306,33 @@ obabel {ligand_id}_out.pdbqt -O{ligand_id}_out.sdf -h
         return results
 
     def get_results(self):
-        if self.proc is None:  # 任务未开始
+        if self.proc is None:  # Task has not started.
             return None
             
-        # 如果结果已经解析过，直接返回
+        # Return cached results if they were already parsed.
         if self.results is not None:
             return self.results
             
-        # 检查进程是否还在运行
+        # Check whether the process is still running.
         if self.proc.poll() is None: # In progress
             return None
 
-        # 进程已结束，开始解析结果文件
+        # The process has finished; parse the result file.
         if self.proc.returncode != 0:
             # print(f"Docking process for {self.ligand_id} failed with non-zero exit code.")
-            # 在这种情况下，结果文件可能不存在或不完整
-            return [] # 返回一个空列表表示失败但程序可继续
+            # In this case, the result file may be missing or incomplete.
+            return [] # Return an empty list so the pipeline can continue.
 
         try:
-            # 核心逻辑：直接解析输出的SDF文件
+            # Parse the output SDF file directly.
             self.results = parse_qvina_outputs(self.docked_sdf_path, self.noH_rdmol)
         except FileNotFoundError:
             # print(f'[Error] Vina output file not found: {self.docked_sdf_path}')
-            self.results = [] # 文件不存在，返回空列表
+            self.results = [] # File is missing; return an empty list.
         except Exception as e:
             # print(f'[Error] Vina output parsing error for: {self.docked_sdf_path}')
             # print(f'*get_results_exception*: {e}')
-            self.results = [] # 其他解析错误，返回空列表
+            self.results = [] # Other parsing errors return an empty list.
                 
         return self.results
 
@@ -386,7 +386,7 @@ def run_docking_for_molecule(args):
         stdout, stderr = vina_task.wait()
         if not vina_results or len(vina_results) == 0:
             if stderr and len(stderr.strip()) > 0:
-                # 截取最后 300 个字符的报错信息，避免太长
+                # Keep the error message short.
                 print(f"Vina/Obabel Error: {stderr.strip()}")
         return {
             'mol': pred_mol,
@@ -404,7 +404,7 @@ def run_docking_for_molecule(args):
             'index': mol_index
         }
 
-#计算生成分子的vina对接指数,并返回结果
+# Compute docking metrics for generated molecules and return the results.
 def cal_pred_mol_vina_docking(gt_gen_csv_path='', results_path=''):
     if os.path.exists(results_path):
         pred_vina_metric_dict = read_vina_dict_from_file(gt_gen_csv_path, results_path)
@@ -419,7 +419,7 @@ def cal_pred_mol_vina_docking(gt_gen_csv_path='', results_path=''):
             pred_smi = row[3]
             group_id = row[0]
             protein_path = row[4]
-            tasks.append((group_id, col_index, pred_smi, protein_path)) #使用group_id作为标记
+            tasks.append((group_id, col_index, pred_smi, protein_path)) # Use group_id as the label.
 
     # 2. Determine the number of parallel processes
     num_processes = mp.cpu_count() // 4  # Adjust as needed
@@ -448,7 +448,7 @@ def cal_pred_mol_vina_docking(gt_gen_csv_path='', results_path=''):
     pred_vina_metric_dict = read_vina_dict_from_file(gt_gen_csv_path, results_path)
     return pred_vina_metric_dict
 
-#计算测试集中生成的100组分子中（每组100个分子）的指标（均值与大于阈值的百分比）
+# Compute metrics for generated test-set molecules.
 def cal_pred_mol_average_metric(pred_mol_vina, topk=10):
     # Step 1: Calculate metrics
     avg_tmp = []  # Store average scores for each group
@@ -467,7 +467,7 @@ def cal_pred_mol_average_metric(pred_mol_vina, topk=10):
     # Print results
     print(f"{'Vina Score':<25} | {vina_score:.4f}")
 
-#计算基准的参考分子的对接分数
+# Compute docking scores for baseline reference molecules.
 # from rdkit.Chem.QED import qed
 # import utils.sascore as sascore 
 def cal_gt_mol_vina(gt_gen_csv_path = '', results_ref_path = ''):
@@ -482,8 +482,8 @@ def cal_gt_mol_vina(gt_gen_csv_path = '', results_ref_path = ''):
             # best_tuple = max(value, key=lambda x: x[0])
             # vina_metric_dict_high[key] = best_tuple[0]
             # vina_high_mol_obj.append(best_tuple[1])
-            vina_metric_dict_high[key] = min(value) #最高的affinity
-            vina_metric_dict_low[key] = max(value) #最低的affinity
+            vina_metric_dict_high[key] = min(value) # Best affinity.
+            vina_metric_dict_low[key] = max(value) # Worst affinity.
             # vina_metric_dict_low[key] = 0
 
         ref_high_affinities = vina_metric_dict_high.values()
@@ -499,7 +499,7 @@ def cal_gt_mol_vina(gt_gen_csv_path = '', results_ref_path = ''):
         return vina_metric_dict_high, vina_metric_dict_low
     
     print(f"Test results file not found. Starting docking for the test set...")
-    # 1. 准备任务列表
+    # Prepare task list.
     tasks = []
     group_id_list = []
 
@@ -511,11 +511,11 @@ def cal_gt_mol_vina(gt_gen_csv_path = '', results_ref_path = ''):
         protein_path = row['protein_path']
         group_id = row['group_id']
         for each_ref_smi in ref_smi_list:
-            tasks.append((group_id, 0, each_ref_smi, protein_path)) #按照每个参考分子创建task进行对接,使用group_id来标记
+            tasks.append((group_id, 0, each_ref_smi, protein_path)) # Create one docking task per reference molecule.
         group_id_list.append(row['group_id'])
 
-    # 2. 设置并行进程数并执行
-    num_processes = mp.cpu_count() // 2 # 同样，可以根据需要调整
+    # Set the number of parallel processes and run.
+    num_processes = mp.cpu_count() // 2 # Adjust as needed.
     print(f"Starting test set docking with {num_processes} parallel processes...")
     
     results = []
@@ -523,7 +523,7 @@ def cal_gt_mol_vina(gt_gen_csv_path = '', results_ref_path = ''):
         for result in tqdm(pool.imap_unordered(run_docking_for_molecule, tasks), total=len(tasks), desc="Docking Test Set"):
             results.append(result)
 
-    # 3. 保存结果并计算指标
+    # Save results and compute metrics.
     final_sorted_results = sorted(results, key=lambda x: x['index'])
     torch.save(final_sorted_results, results_ref_path)
     print(f"Test set docking completed. Results saved to {results_ref_path}.")
@@ -535,8 +535,8 @@ def cal_gt_mol_vina(gt_gen_csv_path = '', results_ref_path = ''):
     for key, value in ref_vina_metric_dict.items():
         if len(value) == 0:
             continue
-        vina_metric_dict_high[key] = min(value) #最高的affinity
-        vina_metric_dict_low[key] = max(value) #最低的affinity
+        vina_metric_dict_high[key] = min(value) # Best affinity.
+        vina_metric_dict_low[key] = max(value) # Worst affinity.
 
     ref_high_affinities = vina_metric_dict_high.values()
     ref_low_affinities = vina_metric_dict_low.values()
@@ -555,33 +555,32 @@ def cal_gt_mol_vina(gt_gen_csv_path = '', results_ref_path = ''):
 def cal_high_aff(pred_mol_vina, high_ref_vina, base_ref_vina, topk):
     high_aff_count_to_high = {}
     high_aff_count_to_base = {}
-    # 1. 遍历预测结果字典
+    # Iterate over predicted result dictionary.
     for key, pred_scores in pred_mol_vina.items():
-        # 安全检查：确保该 key 在两个参考字典中都存在
+        # Ensure the key exists in both reference dictionaries.
         if key not in high_ref_vina or key not in base_ref_vina:
             continue
         
-        # 2. 获取参考值
+        # Get reference values.
         high_ref_val = high_ref_vina[key]
         base_ref_val = base_ref_vina[key]
 
-        current_pred_scores = sorted(pred_scores)[:topk]  # 只考虑前 topk 个分数        
+        current_pred_scores = sorted(pred_scores)[:topk]  # Use only the top-k scores.
         total_num = len(current_pred_scores)
         if total_num == 0:
             continue
 
-        # 3. 统计比例
-        # Vina score 越小越好，所以统计 pred < ref 的数量
+        # Count the ratios; lower Vina scores are better.
         
-        # 统计优于 High Ref 的比例
+        # Ratio better than the high reference.
         better_than_high_count = sum(1 for s in current_pred_scores if s <= high_ref_val)
         high_aff_count_to_high[key] = better_than_high_count / total_num
         
-        # 统计优于 Base Ref 的比例
+        # Ratio better than the base reference.
         better_than_base_count = sum(1 for s in current_pred_scores if s <= base_ref_val)
         high_aff_count_to_base[key] = better_than_base_count / total_num
 
-    # 4. 计算并打印均值
+    # Compute and print means.
     def get_mean_from_dict(d):
         return sum(d.values()) / len(d) if len(d) > 0 else 0.0
 
@@ -594,23 +593,22 @@ def cal_mpbg(pred_mol_vina, high_ref_vina, base_ref_vina, topk):
     mpbg_to_high = {}
     mbpg_to_ref = {}
 
-    # 1. 遍历预测字典
+    # Iterate over predicted result dictionary.
     for key, pred_scores in pred_mol_vina.items():
-        # 确保 Key 在两个参考字典中都存在
+        # Ensure the key exists in both reference dictionaries.
         if key not in high_ref_vina or key not in base_ref_vina:
             continue
             
-        # 2. 获取参考分数
+        # Get reference scores.
         high_ref_val = high_ref_vina[key]
         base_ref_val = base_ref_vina[key]
 
-        current_pred_scores = sorted(pred_scores)[:topk]  # 只考虑前 topk 个分数
+        current_pred_scores = sorted(pred_scores)[:topk]  # Use only the top-k scores.
         total_num = len(current_pred_scores)
         if total_num == 0:
             continue
 
-        # 3. 计算 High Ref 的 MPBG
-        # 防止分母为0 (虽然Vina分一般不为0)
+        # Compute MPBG for the high reference and avoid division by zero.
         if high_ref_val != 0:
             mpbg_list_high = [
                 (high_ref_val - score) / high_ref_val * 100 
@@ -620,7 +618,7 @@ def cal_mpbg(pred_mol_vina, high_ref_vina, base_ref_vina, topk):
         else:
             mpbg_to_high[key] = 0.0
 
-        # 4. 计算 Base Ref 的 MPBG
+        # Compute MPBG for the base reference.
         if base_ref_val != 0:
             mpbg_list_base = [
                 (base_ref_val - score) / base_ref_val * 100 
@@ -630,7 +628,7 @@ def cal_mpbg(pred_mol_vina, high_ref_vina, base_ref_vina, topk):
         else:
             mbpg_to_ref[key] = 0.0
 
-    # 5. 计算所有样本的宏平均 (Macro Average)
+    # Compute macro averages over all samples.
     def get_mean(d):
         return sum(d.values()) / len(d) if len(d) > 0 else 0.0
 
@@ -639,14 +637,14 @@ def cal_mpbg(pred_mol_vina, high_ref_vina, base_ref_vina, topk):
     mean_mpbg_high = get_mean(mpbg_to_high)
     mean_mpbg_base = get_mean(mbpg_to_ref)
 
-    # 6. 打印结果
+    # Print results.
     print(f"{'MPBG High/Base':<25} | {mean_mpbg_high:.2f}% / {mean_mpbg_base:.2f}%")
 
 def compute_vina_metrics(gt_gen_csv_path, results_pred_path, results_ref_path):
     # Compute reference vina scores
     print("="*50)
     print("-" * 50)
-    print(f"{'Reference Molecule Vina Scores':^50}") # 居中标题
+    print(f"{'Reference Molecule Vina Scores':^50}") # Centered title.
     print("-" * 50)
     vina_metric_dict_high, vina_metric_dict_low = cal_gt_mol_vina(gt_gen_csv_path = gt_gen_csv_path, results_ref_path = results_ref_path)
     print("-" * 50)
@@ -655,7 +653,7 @@ def compute_vina_metrics(gt_gen_csv_path, results_pred_path, results_ref_path):
     pred_mol_vina = cal_pred_mol_vina_docking(gt_gen_csv_path = gt_gen_csv_path, results_path = results_pred_path)
     # for topk in [1,3,5,10]:
     #     print("-" * 50)
-    #     print(f"{f'Metrics For Top{topk} Generated Molecules':^50}") # 居中标题
+    #     print(f"{f'Metrics For Top{topk} Generated Molecules':^50}") # Centered title.
     #     print("-" * 50)
     #     cal_pred_mol_average_metric(pred_mol_vina, topk=topk)
     #     cal_high_aff(pred_mol_vina=pred_mol_vina, high_ref_vina=vina_metric_dict_high, base_ref_vina=vina_metric_dict_low, topk = topk)

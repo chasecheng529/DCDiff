@@ -13,7 +13,7 @@ from src import const
 
 def read_sdf(sdf_path):
     if os.path.getsize(sdf_path) == 0:
-        return Chem.Mol() # 返回空 Mol 对象，因为此时不需要生成任何东西
+        return Chem.Mol() # Return an empty molecule because no atoms need to be generated.
     supplier = Chem.SDMolSupplier(sdf_path, removeHs=True, sanitize=True)
     if not supplier:
         return None
@@ -218,7 +218,7 @@ def create_template(tensor, scaffold_size, rgroup_size, fill=0):
     values_to_add = values_to_add * fill
     return torch.cat([values_to_keep, values_to_add], dim=0)
 
-def create_templates_for_rgroup_generation_single(data, rgroup_sizes):#解释
+def create_templates_for_rgroup_generation_single(data, rgroup_sizes):
     decoupled_data = []
     for i, rgroup_size in enumerate(rgroup_sizes):
         data_dict = {}
@@ -259,7 +259,7 @@ def create_templates_for_rgroup_generation_multi(data, rgroup_sizes):
                 if k == "affinity":
                     data_dict[k] = v[i]
                     continue
-                # 检查 v[i] 的维度
+                # Check the dimensionality of v[i].
                 if len(v[i].shape) == 1:
                     print(f"Warning: Key '{k}' has a 1D array for molecule {i}: {v[i]}")
                 fill_value = 1 if k == 'rgroup_mask' else 0
@@ -301,7 +301,7 @@ def create_templates_for_rgroup_generation_multi(data, rgroup_sizes):
 #         return self.data[item]
 
 #     @staticmethod
-#     def preprocess(data_path, prefix, pocket_mode, device):#pocket_mode是什么
+#     def preprocess(data_path, prefix, pocket_mode, device):
 #         data = []
 #         table_path = os.path.join(data_path, f'{prefix}_table.csv')
 #         scaffold_path = os.path.join(data_path, f'{prefix}_scaf.sdf')
@@ -329,10 +329,10 @@ def create_templates_for_rgroup_generation_multi(data, rgroup_sizes):
 #             # fake_pos = np.mean(scaf_pos, axis = 0) # fake atom of scaf
 #             fake_pos = scaf_pos[anchor_id] # fake atom of anchor
             
-#             rgroup_pos, rgroup_one_hot, rgroup_charges = parse_rgroup(rgroup, fake_pos)#假原子
+#             rgroup_pos, rgroup_one_hot, rgroup_charges = parse_rgroup(rgroup, fake_pos) # Fake atom.
 #             # rgroup_pos, rgroup_one_hot, rgroup_charges = parse_molecule(rgroup)
 
-#             pocket_pos = []#靶点的
+#             pocket_pos = [] # Pocket positions.
 #             pocket_one_hot = []
 #             pocket_charges = []
 #             for i in range(len(pocket_data[f'{pocket_mode}_types'])):
@@ -341,7 +341,7 @@ def create_templates_for_rgroup_generation_multi(data, rgroup_sizes):
 #                 if atom_type == 'H':
 #                     continue
 #                 pocket_pos.append(pos)
-#                 pocket_one_hot.append(get_one_hot(atom_type, const.ATOM2IDX))#类型转换成数组
+#                 pocket_one_hot.append(get_one_hot(atom_type, const.ATOM2IDX)) # Convert atom type to one-hot array.
 #                 pocket_charges.append(const.CHARGES[atom_type])
 #             pocket_one_hot = np.array(pocket_one_hot)
 #             pocket_charges = np.array(pocket_charges)
@@ -529,19 +529,19 @@ def create_templates_for_rgroup_generation_multi(data, rgroup_sizes):
 
 def collate_mr(batch):
     out = {}
-    for i, data in enumerate(batch):#enumerate得到迭代索引和值
-        for key, value in data.items():#数据批次。
-            out.setdefault(key, []).append(value)#将值传递给out数组，果字典中不存在该键，则返回这个默认值
+    for i, data in enumerate(batch): # enumerate returns the index and value.
+        for key, value in data.items(): # Data batch.
+            out.setdefault(key, []).append(value) # Append to out, creating the key if needed.
     for key, value in out.items():
         if key in const.DATA_LIST_ATTRS:
             continue
         if key in const.DATA_ATTRS_TO_PAD:
-            out[key] = torch.nn.utils.rnn.pad_sequence(value, batch_first=True, padding_value=0)#将长度不一致的序列补成一致的。batch_first=True的形状会是(batch_size, max_sequence_length)
+            out[key] = torch.nn.utils.rnn.pad_sequence(value, batch_first=True, padding_value=0) # Pad variable-length sequences to (batch_size, max_sequence_length).
             continue
         raise Exception(f'Unknown batch key: {key}')
 
-    # 新增Atom Mask用于标记谁是padding的
-    atom_mask = (out['core_pocket_mask'].bool() | out['rgroup_mask'].bool()).to(const.TORCH_INT)#找出他们都是1的部分，把padding的都标记成0，所有原子的掩码。
+    # Add an atom mask to mark padding positions.
+    atom_mask = (out['core_pocket_mask'].bool() | out['rgroup_mask'].bool()).to(const.TORCH_INT) # Valid atoms are 1 and padding atoms are 0.
     out['atom_mask'] = atom_mask[:, :, None]
 
     batch_size, n_nodes = atom_mask.size()
@@ -594,7 +594,7 @@ class SARDRG(Dataset):
             path = os.path.join(self.processed_dir, '{}.pt'.format(data_id))
             self.split_file_paths.append(path)
 
-        print(f"Success load {len(self.split_file_paths)} {prefix} files。")
+        print(f"Success load {len(self.split_file_paths)} {prefix} files.")
 
     def __len__(self):
         return len(self.split_file_paths)

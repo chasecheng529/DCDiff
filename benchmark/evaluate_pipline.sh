@@ -9,11 +9,7 @@ SAMPLES_PATH="../sample_results"
 EXPERIMENT_NAME="TEST"
 
 
-# === 【核心修改】新的目录结构逻辑 ===
-
-
 PROCESSED_DATA_DIR="evaluate"
-
 FORMATTED_RESULT_DIR="${PROCESSED_DATA_DIR}/${EXPERIMENT_NAME}/formatted"
 PRED_GT_CSV_PATH="${FORMATTED_RESULT_DIR}/pred_gt_map.csv"
 
@@ -36,32 +32,31 @@ echo "INFO - Create directories: $FORMATTED_RESULT_DIR, $DOCKING_RESULT_DIR"
 
 > "$LOG_FILE"
 
-# --- 开始执行 ---
-# 【保持不变】从这里开始的所有代码，都和您之前的版本完全一样
-echo "流水线开始运行于 $(date) (Experiment Name: ${EXPERIMENT_NAME})" | tee -a "$LOG_FILE"
-echo "将把所有输出【同时记录到 $LOG_FILE 并显示在控制台】" | tee -a "$LOG_FILE"
+# --- Start evaluation ---
+echo "Pipeline started at $(date) (Experiment Name: ${EXPERIMENT_NAME})" | tee -a "$LOG_FILE"
+echo "All output will be recorded in $LOG_FILE and shown in the console." | tee -a "$LOG_FILE"
 echo "----------------------------------------" | tee -a "$LOG_FILE"
 
-# === 步骤 2/4：运行 reformat.py ===
-echo "[步骤 2/4] Runing 'reformat.py' to covert xyz file to SMILES for docking and evaluating..." | tee -a "$LOG_FILE"
+# === Step 2/4: run reformat.py ===
+echo "[Step 2/4] Running 'reformat.py' to convert xyz files to SMILES for docking and evaluation..." | tee -a "$LOG_FILE"
 python reformat.py --samples "$SAMPLES_PATH" \
                    --formatted "$PRED_GT_CSV_PATH"
-echo "[步骤 2/4] 'reformat.py' finished" | tee -a "$LOG_FILE"
+echo "[Step 2/4] 'reformat.py' finished" | tee -a "$LOG_FILE"
 echo "----------------------------------------" | tee -a "$LOG_FILE"
 
-# === 步骤 3/4：运行 vina_docking.py ===
-echo "[步骤 3/4] Runing 'vina_docking.py' for docking mols" | tee -a "$LOG_FILE"
+# === Step 3/4: run vina_docking.py ===
+echo "[Step 3/4] Running 'vina_docking.py' for molecular docking" | tee -a "$LOG_FILE"
 python vina_docking.py --formatted "$PRED_GT_CSV_PATH" \
     --results_pred_path "$RESULTS_PRED_PATH" \
     --results_ref_path "$RESULTS_BASE_PATH" \
-    > >(tee -a "$LOG_FILE")  # stdout 进日志
-echo "[步骤 3/4] 'vina_docking.py' finished" | tee -a "$LOG_FILE"
+    > >(tee -a "$LOG_FILE")  # Log stdout.
+echo "[Step 3/4] 'vina_docking.py' finished" | tee -a "$LOG_FILE"
 echo "----------------------------------------" | tee -a "$LOG_FILE"
 
-# === 步骤 3/5：运行 computer_metrics.py ===
-echo "[步骤 4/4] Runing 'computer_metrics.py' to compute metrics" | tee -a "$LOG_FILE"
-python -W ignore computer_metrics.py "$PRED_GT_CSV_PATH" > >(tee -a "$LOG_FILE")  # stdout 进日志
-echo "[步骤 4/4] 'computer_metrics.py' finished" | tee -a "$LOG_FILE"
+# === Step 4/4: run computer_metrics.py ===
+echo "[Step 4/4] Running 'computer_metrics.py' to compute metrics" | tee -a "$LOG_FILE"
+python -W ignore computer_metrics.py "$PRED_GT_CSV_PATH" > >(tee -a "$LOG_FILE")  # Log stdout.
+echo "[Step 4/4] 'computer_metrics.py' finished" | tee -a "$LOG_FILE"
 echo "----------------------------------------" | tee -a "$LOG_FILE"
 
-echo "流水线成功结束于 $(date)." | tee -a "$LOG_FILE"
+echo "Pipeline finished successfully at $(date)." | tee -a "$LOG_FILE"

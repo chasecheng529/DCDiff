@@ -14,7 +14,7 @@ from src.datasets import (
 from typing import Dict, List, Optional
 
 def get_activation(activation):
-    if activation == 'silu':#激活函数
+    if activation == 'silu':
         return torch.nn.SiLU()
     else:
         raise Exception("activation fn not supported yet. Add it here.")
@@ -45,7 +45,7 @@ class DDPM(pl.LightningModule):
         super(DDPM, self).__init__()
         
         
-        self.save_hyperparameters()#用于自动保存超参数
+        self.save_hyperparameters() # Save hyperparameters automatically.
         self.data_path = data_path
         self.train_data_prefix = train_data_prefix
         self.val_data_prefix = val_data_prefix
@@ -58,7 +58,7 @@ class DDPM(pl.LightningModule):
         self.log_iterations = log_iterations
         self.data_augmentation = data_augmentation
         self.center_of_mass = center_of_mass
-        self.inpainting = inpainting#图像保存技术
+        self.inpainting = inpainting
         self.loss_type = diffusion_loss_type
 
         self.n_dims = n_dims
@@ -128,9 +128,9 @@ class DDPM(pl.LightningModule):
         return get_dataloader(self.val_dataset, self.batch_size, collate_fn=collate_fn, persistent_workers=True, num_workers = 4)
 
     def test_dataloader(self, collate_fn=collate_mr):
-        return get_dataloader(self.test_dataset, self.batch_size, collate_fn=collate_fn, persistent_workers=True, num_workers = 4)#导入数据
+        return get_dataloader(self.test_dataset, self.batch_size, collate_fn=collate_fn, persistent_workers=True, num_workers = 4)
         
-    # 采样时将分类条件加入上下文
+    # Add class labels to the context during sampling.
     def forward(self, data, training):
         #set p to 0 when validation
         if training:
@@ -152,7 +152,7 @@ class DDPM(pl.LightningModule):
         # Anchors, scaffolds labels, and pocket labels are used as context
         context = torch.cat([anchors, core_mask, pocket_mask], dim=-1)
 
-        # 选定去中心化的中心
+        # Select the centering reference.
         if self.center_of_mass == 'core':
             center_of_mass_mask = core_mask
         elif self.center_of_mass == 'core_pocket':
@@ -162,7 +162,7 @@ class DDPM(pl.LightningModule):
         else:
             raise NotImplementedError(self.center_of_mass)
         
-        # 去中心化
+        # Center coordinates.
         x = utils.remove_partial_mean_with_mask(x, atom_mask, center_of_mass_mask)
         utils.assert_partial_mean_zero_with_mask(x, atom_mask, center_of_mass_mask)
 
@@ -187,18 +187,18 @@ class DDPM(pl.LightningModule):
 
     def common_step(self, data, stage: str):
         """
-        一个通用的步骤，处理 train/val/test 的重复逻辑。
-        :param data: 输入的数据批次。
-        :param stage: 'train', 'val', 或 'test'。
+        Shared step for train/val/test logic.
+        :param data: input data batch.
+        :param stage: 'train', 'val', or 'test'.
         """
-        # 1. 模型前向传播，获取所有指标
+        # Run the model forward pass and collect all metrics.
         delta_log_px, kl_prior, loss_term_t, loss_term_0, l2_loss, noise_t, noise_0 = self.forward(
             data, training=(stage == 'train')
         )
         batch_size = data['positions'].shape[0]
         vlb_loss = kl_prior + loss_term_t + loss_term_0 - delta_log_px
 
-        # 2. 根据配置选择最终的 loss
+        # Select the final loss from the configuration.
         if self.loss_type == 'l2':
             loss = l2_loss
         elif self.loss_type == 'vlb':
@@ -206,7 +206,7 @@ class DDPM(pl.LightningModule):
         else:
             raise NotImplementedError(self.loss_type)
 
-        # 3. 将所有指标打包进一个字典
+        # Pack all metrics into one dictionary.
         metrics = {
             'loss': loss,
             'delta_log_px': delta_log_px,
@@ -219,24 +219,23 @@ class DDPM(pl.LightningModule):
             'noise_0': noise_0
         }
 
-        # 4. 精简日志记录
-        # 只在进度条上显示我们关心的核心指标
+        # Keep progress-bar logging compact.
         prog_bar_metrics = ['loss']
 
         for name, value in metrics.items():
-            # 判断当前指标是否需要在进度条上显示
+            # Decide whether this metric should appear in the progress bar.
             on_prog_bar = name in prog_bar_metrics
             
-            # 使用 f-string 构造日志名称，例如 'loss/val'
+            # Build log names with f-strings, e.g. 'loss/val'.
             log_name = f'{name}-{stage}'
             
-            # on_step 只在训练时开启，on_epoch 始终开启以获得平滑曲线
+            # Use on_step only for training and always use on_epoch for smoother curves.
             self.log(log_name, value,
                     on_step=False,
                     on_epoch=True,
                     prog_bar=on_prog_bar,
                     batch_size=batch_size,
-                    sync_dist=True) # val/test 需要跨设备同步
+                    sync_dist=True) # val/test need cross-device synchronization.
 
         return loss
 
@@ -275,7 +274,7 @@ class DDPM(pl.LightningModule):
         # Anchors, scaffolds labels, and pocket labels are used as context
         context = torch.cat([anchors, core_mask, pocket_mask], dim=-1)
 
-        # 选定去中心化的中心
+        # Select the centering reference.
         if self.center_of_mass == 'core':
             center_of_mass_mask = core_mask
         elif self.center_of_mass == 'core_pocket':
@@ -303,7 +302,7 @@ class DDPM(pl.LightningModule):
             affinity_condition=target_affinity,
             keep_frames=keep_frames,
             guidance_scale = guidance_scale
-        )#在这采样
+        ) # Sample here.
 
         return chain, atom_mask, mean
 

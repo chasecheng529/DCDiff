@@ -214,7 +214,7 @@ def save_xyz_file_fa(path, one_hot, positions, node_mask, names, suffix=''):
 #     files = load_xyz_files(path)
 #     save_paths = []
 
-#     # Fit PCA to the final molecule – to obtain the best orientation for visualization
+#     # Fit PCA to the final molecule to obtain the best orientation for visualization
 #     positions, one_hot, charges = load_molecule_xyz(files[-1])
 #     pca = PCA(n_components=3)
 #     pca.fit(positions)

@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 import sys
 
-import utils.sascore as sascore  # 确保路径正确
+import utils.sascore as sascore  # Ensure the import path is correct.
 from rdkit import Chem
 from rdkit.Chem import DataStructs
 from rdkit.Chem.QED import qed
@@ -57,7 +57,7 @@ def get_valid_score(data,  group_id_list):
 
 # -------------- Uniqueness -------------- #
 def get_unique_score(data,  group_id_list):
-    #创建字典，映射group-id和所属的预测出来的分子
+    # Map each group id to its predicted molecules.
     uni_dict = {}
     for i in range(len(group_id_list)):
         uni_dict[group_id_list[i]] = []
@@ -90,11 +90,11 @@ def get_smi_score(data,  group_id_list):
     for i in range(len(group_id_list)):
         sim_dict[group_id_list[i]] = []
 
-    for obj in data: #遍历每一个生成的分子
-        # 首先获取这个group的所有GT
+    for obj in data: # Iterate over each generated molecule.
+        # Fetch all ground-truth molecules for this group first.
         if obj['group_id'] not in group_gt_dict:
             gt_fingerprint_list = []
-            #构建gt的fingerprint
+            # Build ground-truth fingerprints.
             for true_smi in obj['true_molecules']:
                 true_mol = Chem.MolFromSmiles(true_smi)
                 if true_mol is None:
@@ -106,7 +106,7 @@ def get_smi_score(data,  group_id_list):
                 gt_fingerprint_list.append(Chem.RDKFingerprint(true_mol))
             group_gt_dict[obj['group_id']] = gt_fingerprint_list
         
-        #从cache里面拿gt的fingerprint
+        # Fetch ground-truth fingerprints from the cache.
         group_gt_fingerprints = group_gt_dict[obj['group_id']]
 
         gt_similarities = []
@@ -142,7 +142,7 @@ def get_recovery_score(data, group_id_list):
     for obj in data:
         if obj['group_id'] not in group_gt_dict:
             gt_smiles_set = set()
-            #构造所有的gt的mol
+            # Build normalized SMILES for all ground-truth molecules.
             for gt_smiles in obj['true_molecules']:
                 try:
                     true_mol = Chem.MolFromSmiles(gt_smiles)
@@ -158,7 +158,7 @@ def get_recovery_score(data, group_id_list):
         if not obj['valid']:
             obj['recovered'] = False
         else:
-            #构建预测的分子的SMILES
+            # Build normalized SMILES for the predicted molecule.
             try:
                 pred_mol = Chem.MolFromSmiles(obj['pred_molecule'])
                 Chem.RemoveStereochemistry(pred_mol)
@@ -167,7 +167,7 @@ def get_recovery_score(data, group_id_list):
                 pred_mol = Chem.MolFromSmiles(obj['pred_molecule'], sanitize=False)
                 Chem.RemoveStereochemistry(pred_mol)
                 pred_mol_smi = Chem.MolToSmiles(Chem.RemoveHs(pred_mol, sanitize=False))
-            #命中一个就算recovery
+            # Any exact match counts as recovered.
             obj['recovered'] = pred_mol_smi in group_gt_smiles_set
         recovery_dict[obj['group_id']] = recovery_dict[obj['group_id']] or obj['recovered']
     recovered_count = 0
@@ -304,7 +304,7 @@ def get_full_lipinski_rate(data, group_id_list):
 
     for obj in data:
         if obj.get('lipinski') is not None:
-            # 如果完全满足5个规则，记录为True，否则为False
+            # Mark True only when all five rules are satisfied.
             full_compliance = (obj['lipinski'] == 5)
             lipinski_full_dict[obj['group_id']].append(full_compliance)
 
@@ -312,7 +312,7 @@ def get_full_lipinski_rate(data, group_id_list):
     for k, v in lipinski_full_dict.items():
         if len(v) == 0:
             continue
-        # 计算该core-pocket组中完全满足规则的分子占比
+        # Compute the full-compliance ratio for this core-pocket group.
         compliance_ratio = sum(v) / len(v)
         avg_tmp.append(compliance_ratio)
 
@@ -362,7 +362,7 @@ def get_reference_vina_scores(group_id_list, results_ref_path = './utils/docking
         for key, value in ref_vina_metric_dict.items():
             if len(value) == 0:
                 continue
-            vina_metric_dict_high[key] = min(value) #最高的affinity
+            vina_metric_dict_high[key] = min(value) # Best affinity.
 
         ref_high_affinities = vina_metric_dict_high.values()
         
@@ -393,7 +393,7 @@ if __name__ == "__main__":
     recovery_score = get_recovery_score(data, group_id_list)
     print("="*50)
     print("-" * 50)
-    print(f"{'EVALUATION METRICS For All Generated Molecules':^50}") # 居中标题
+    print(f"{'EVALUATION METRICS For All Generated Molecules':^50}") # Centered title.
     print("-" * 50)
     print(f"{'Validity':<25} | {valid_score:.2f}%")
     print(f"{'Uniqueness':<25} | {unique_score:.2f}%")
@@ -419,7 +419,7 @@ if __name__ == "__main__":
         lipinski_avg = get_avg_lipinski_score(data, group_id_list)
         lipinski_rate = get_full_lipinski_rate(data, group_id_list)
 
-        print(f"{f'EVALUATION METRICS For Top {topk} Generated Molecules':^50}") # 居中标题
+        print(f"{f'EVALUATION METRICS For Top {topk} Generated Molecules':^50}") # Centered title.
         print("-" * 50)
         print(f"{'Average Affinity':<25} | {average_affinity:.2f}")
         print(f"{'High Affinity':<25} | {high_affinity * 100:.2f}%")

@@ -36,7 +36,7 @@ class EDM(torch.nn.Module):
         self.norm_biases = norm_biases
 
 
-    #考虑假原子坐标作为损失的一部分的forward函数
+    # Forward pass that includes fake-atom coordinates in the loss.
     def forward(self, x, h, node_mask, core_mask, 
                 rgroup_mask, core_pocket_mask, batch_mask, context, center_of_mass_mask,
                 affinity_condition, p_uncond):
@@ -51,7 +51,7 @@ class EDM(torch.nn.Module):
         # Sample t
         t_int = torch.randint(0, self.T + 1, size=(x.size(0), 1), device=x.device).float()
         s_int = t_int - 1
-        t = t_int / self.T#归一化
+        t = t_int / self.T # Normalize.
         s = s_int / self.T
 
         # Masks for t=0 and t>0
@@ -85,9 +85,9 @@ class EDM(torch.nn.Module):
             affinity_condition = affinity_condition,
             batch_mask = batch_mask,
             p_uncond = p_uncond
-            )#预测噪声
+            ) # Predicted noise.
         
-        eps_t_hat = eps_t_hat * rgroup_mask #这里其实只要了r group的部分，不论之前是否更新了scaffold和pocket
+        eps_t_hat = eps_t_hat * rgroup_mask # Keep only the R-group part, regardless of scaffold or pocket updates.
 
         # Computing basic error (further used for computing NLL and L2-loss)
         error_t = self.sum_except_batch((eps_t - eps_t_hat) ** 2)
@@ -138,8 +138,8 @@ class EDM(torch.nn.Module):
         xh = torch.cat([x, h], dim=2)
 
         # Initial rgroup sampling from N(0, I)
-        z = self.sample_combined_position_feature_noise(n_samples, n_nodes, mask=rgroup_mask)#初始噪声采样
-        z = xh * core_pocket_mask + z * rgroup_mask#初始噪声
+        z = self.sample_combined_position_feature_noise(n_samples, n_nodes, mask=rgroup_mask) # Initial noise sample.
+        z = xh * core_pocket_mask + z * rgroup_mask # Initial noise.
 
         if keep_frames is None:
             keep_frames = self.T
@@ -155,7 +155,7 @@ class EDM(torch.nn.Module):
             s_array = torch.full((n_samples, 1), fill_value=s, device=z.device)
             t_array = s_array + 1
             s_array = s_array / self.T
-            t_array = t_array / self.T#逐步逆推生成样本
+            t_array = t_array / self.T # Iteratively denoise samples.
 
             z = self.sample_p_zs_given_zt_only_rgroup(
                 s=s_array,
@@ -190,7 +190,7 @@ class EDM(torch.nn.Module):
     def sample_p_zs_given_zt_only_rgroup(self, s, t, z_t, node_mask, core_pocket_mask, rgroup_mask, batch_mask, context, affinity_condition, guidance_scale):
         # First, we need to generate the fixed env condition based on affinity labels
         """Samples from zs ~ p(zs | zt). Only used during sampling. Samples only rgroup features and coords"""
-        gamma_s = self.gamma(s)#用于给定时间部的情况下
+        gamma_s = self.gamma(s) # For the given time step.
         gamma_t = self.gamma(t)
 
         sigma2_t_given_s, sigma_t_given_s, alpha_t_given_s = self.sigma_and_alpha_t_given_s(gamma_t, gamma_s, z_t)
@@ -207,7 +207,7 @@ class EDM(torch.nn.Module):
             affinity_condition = affinity_condition,
             batch_mask = batch_mask,
             p_uncond = 0.0
-        )#预测噪声
+        ) # Predicted noise.
 
         if guidance_scale > 1.0:
             eps_uncond = self.dynamics.forward(
@@ -219,7 +219,7 @@ class EDM(torch.nn.Module):
                     affinity_condition = affinity_condition,
                     batch_mask = batch_mask,
                     p_uncond = 1.0
-                )#预测噪声
+                ) # Predicted noise.
             eps_hat = eps_uncond + guidance_scale * (eps_cond - eps_uncond)
         
         else:
@@ -228,7 +228,7 @@ class EDM(torch.nn.Module):
         eps_hat = eps_hat * rgroup_mask
 
         # Compute mu for p(z_s | z_t)
-        mu = z_t / alpha_t_given_s - (sigma2_t_given_s / alpha_t_given_s / sigma_t) * eps_hat#反向还原，是用噪声还原
+        mu = z_t / alpha_t_given_s - (sigma2_t_given_s / alpha_t_given_s / sigma_t) * eps_hat # Reverse denoising from predicted noise.
 
         # Compute sigma for p(z_s | z_t)
         sigma = sigma_t_given_s * sigma_s / sigma_t
@@ -237,7 +237,7 @@ class EDM(torch.nn.Module):
         z_s = self.sample_normal(mu, sigma, rgroup_mask)#
         z_s = z_t * core_pocket_mask + z_s * rgroup_mask
 
-        return z_s#上一步的噪声
+        return z_s # Noise from the previous step.
 
     def sample_p_xh_given_z0_only_rgroup(self, z_0, node_mask, core_pocket_mask, rgroup_mask, batch_mask, context, affinity_condition, guidance_scale):
         """Samples x ~ p(x|z0). Samples only rgroup features and coords"""
@@ -335,7 +335,7 @@ class EDM(torch.nn.Module):
         z_h = z_0[:, :, self.n_dims:]
 
         # Take only part over x
-        # 这里只考虑了真实原子的坐标误差
+        # Only coordinate errors for real atoms are considered here.
         eps_x = eps[:, :, :self.n_dims]
         eps_hat_x = eps_hat[:, :, :self.n_dims]
 

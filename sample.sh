@@ -1,5 +1,5 @@
 #!/bin/bash
-# 使用 set -e 让脚本在任何命令失败时立即退出
+# Exit immediately if any command fails.
 set -eo pipefail
 
 # --- Can be edited ---

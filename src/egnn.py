@@ -9,11 +9,11 @@ from src.condition_model import GatedFiLMGuidanceModule
 class RBFEmbedding(nn.Module):
     def __init__(self, start=0.0, stop=5.0, num_gaussians=16):
         super().__init__()
-        # 定义一系列高斯核的中心点
+        # Define centers for the Gaussian kernels.
         offset = torch.linspace(start, stop, num_gaussians)
         self.register_buffer('offset', offset)
         
-        # 定义高斯核的宽度 (根据中心点间距自动计算)
+        # Define Gaussian kernel width from the center spacing.
         width = offset[1] - offset[0]
         self.coeff = -0.5 / (width ** 2)
 
@@ -289,12 +289,12 @@ class EGNN(nn.Module):
                 rgroup_mask=rgroup_mask,
                 edge_mask=edge_mask,
                 edge_attr=distances
-            )#这里h其实都更新了，但是x并没有更新pocket和scaffold部分
+            ) # h is updated, while pocket and scaffold coordinates are not.
         
         # Important, the bias of the last linear might be non-zero
         h = self.embedding_out(h_current)
         if node_mask is not None:
-            h = h * node_mask #这个地方消除padding的影响
+            h = h * node_mask # Remove padding effects.
         return h, x
 
 
@@ -452,7 +452,7 @@ class Dynamics(nn.Module):
             rgroup_mask = rgroup_mask.view(bs * n_nodes, 1)  # (B*N, 1)
 
         # Reshaping node features & adding time feature
-        xh = xh.view(bs * n_nodes, -1).clone() * node_mask  # (B*N, D) #这一步是将padding的部分影响消除
+        xh = xh.view(bs * n_nodes, -1).clone() * node_mask  # (B*N, D), removes padding effects.
         x = xh[:, :self.n_dims].clone()  # (B*N, 3)
         h = xh[:, self.n_dims:].clone()  # (B*N, nf)
         if self.condition_time:
@@ -553,7 +553,7 @@ class SimpleDynamics(Dynamics):
             nn.Linear(hidden_nf, hidden_nf)
         )
 
-    #edge_mask实际没用到，因为edges是按照distance来的，已经重构
+    # edge_mask is unused because edges are rebuilt from distances.
     def forward(self, t, xh, node_mask, rgroup_mask, context, affinity_condition, batch_mask, p_uncond = 0.1): 
         """
         - t: (B)
@@ -576,7 +576,7 @@ class SimpleDynamics(Dynamics):
         x = xh[:, :self.n_dims].clone()  # (B*N, 3)
         h = xh[:, self.n_dims:].clone()  # (B*N, nf)
 
-        # 依据4A和batch_index创建边
+        # Build edges from the 4A cutoff and batch index.
         edges_egnn1 = self.get_dist_edges(x, node_mask, batch_mask)
 
         if context is not None:
@@ -671,7 +671,7 @@ class SinusoidalEmbedding(nn.Module):
         self.dim = dim
 
     def forward(self, x):
-        # x 形状: (B, 1)
+        # x shape: (B, 1)
         device = x.device
         half_dim = self.dim // 2
         emb = math.log(10000) / (half_dim - 1)
@@ -679,4 +679,3 @@ class SinusoidalEmbedding(nn.Module):
         emb = x * emb.unsqueeze(0)
         emb = torch.cat((emb.sin(), emb.cos()), dim=-1)
         return emb
-

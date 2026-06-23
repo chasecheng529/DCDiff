@@ -3,8 +3,8 @@ import os
 import pwd
 import sys
 import yaml
-import random#
-import numpy as np#模块是按模块名唯一加载的
+import random
+import numpy as np
 
 from pytorch_lightning.callbacks import Callback
 
@@ -16,29 +16,29 @@ class SetupCallback(Callback):
         self.log_dir = log_dir
 
     def setup(self, trainer, pl_module, stage: str):
-        """ 在 DDP 环境完全设置好之后，但在训练开始之前调用 """
-        if trainer.is_global_zero:  # 使用 trainer.is_global_zero 是最稳健的方式
+        """Run after DDP setup finishes and before training starts."""
+        if trainer.is_global_zero:  # Use trainer.is_global_zero for robust main-process checks.
             print(f"====== Rank {trainer.global_rank} is setting up directories ======")
-            # 把所有文件操作都移到这里
+            # Keep all filesystem setup on the main process.
             os.makedirs(self.log_dir, exist_ok=True)
             os.makedirs(self.checkpoints_dir, exist_ok=True)
 
-            # 重定向输出也应该只在主进程进行
+            # Redirect output only on the main process.
             sys.stdout = Logger(logpath=os.path.join(self.log_dir, 'log.log'), syspart=sys.stdout)
             sys.stderr = Logger(logpath=os.path.join(self.log_dir, 'log.log'), syspart=sys.stderr)
 
             print(f"Directories and logging are set up by the main process.")
         else:
-            # 其他进程可以打印信息以供调试
+            # Other ranks can still print a short debugging message.
             print(f"====== Rank {trainer.global_rank} is skipping directory setup ======")
 
 
 def set_random_seed(seed=42):
-    """ 设置随机数种子以保证实验可复现 """
+    """Set random seeds for reproducible experiments."""
     random.seed(seed)
     np.random.seed(seed)
 
-    import torch  #  这里导入 torch，确保它受随机数种子影响
+    import torch  # Import torch here so it is seeded together with the other RNGs.
     torch.manual_seed(seed)
     torch.cuda.manual_seed(seed)
     torch.cuda.manual_seed_all(seed)
@@ -157,13 +157,13 @@ def main(args):
         log_dir=log_dir
     )
 
-    # 1. 根据设备数量动态决定 strategy
+    # Select the training strategy based on the number of devices.
     if args.ddp_devices > 1:
-        # 当设备数大于1时，我们才使用 DDPStrategy
+        # Use DDPStrategy only when more than one device is requested.
         ddp_strategy = DDPStrategy(find_unused_parameters=False)
     else:
-        # 当设备数等于1或未指定时，我们不指定 strategy，让 Lightning 自动选择最优的单设备策略
-        ddp_strategy = "auto" # 或者 None，'auto'更清晰
+        # Let Lightning choose the single-device strategy.
+        ddp_strategy = "auto"
     
     trainer = Trainer(
         max_epochs=args.n_epochs,
@@ -249,7 +249,7 @@ if __name__ == '__main__':
     p.add_argument('--n_stability_samples', type=int, default=500,help='Number of samples to compute the stability')
     p.add_argument('--normalize_factors', type=eval, default=[1, 4, 1], help='normalize factors for [x, categorical, integer]')
     p.add_argument('--remove_h', action='store_true')
-    p.add_argument('--include_charges', type=eval, default=True,help='include atom charge or not')#是否加入电荷信息
+    p.add_argument('--include_charges', type=eval, default=True, help='include atom charge or not')
     p.add_argument('--visualize_every_batch', type=int, default=1e8,help="Can be used to visualize multiple times per epoch")
     p.add_argument('--normalization_factor', type=float, default=1,help="Normalize the sum aggregation of EGNN")
     p.add_argument('--aggregation_method', type=str, default='sum',help='"sum" or "mean"')
